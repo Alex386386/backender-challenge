@@ -47,7 +47,7 @@ def cleanup_processed_outbox_events(self):
     """Удаляет обработанные события из Outbox."""
     try:
         deleted_count, _ = EventOutbox.objects.filter(processed=True).delete()
-        logger.info(f"Удалено {deleted_count} обработанных событий из Outbox")
+        logger.info(f"Deleted {deleted_count} processed events from Outbox")
     except Exception as e:
         capture_exception(e)
         logger.error("Retrying due to failure", error=str(e))

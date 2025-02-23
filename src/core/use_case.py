@@ -3,16 +3,7 @@ from typing import Any, Protocol
 import structlog
 from django.db import transaction
 
-from core.base_model import Model
-
-
-class UseCaseRequest(Model):
-    pass
-
-
-class UseCaseResponse(Model):
-    result: Any = None
-    error: str = ''
+from core.use_case_scemas import UseCaseRequest, UseCaseResponse
 
 
 class UseCase(Protocol):
@@ -22,14 +13,16 @@ class UseCase(Protocol):
         ):
             return self._execute(request)
 
-    def _get_context_vars(self, request: UseCaseRequest) -> dict[str, Any]:  # noqa: ARG002
+    def _get_context_vars(
+        self, request: UseCaseRequest
+    ) -> dict[str, Any]:  # noqa: ARG002
         """
         !!! WARNING:
             This method is calling out of transaction so do not make db
             queries in this method.
         """
         return {
-            'use_case': self.__class__.__name__,
+            "use_case": self.__class__.__name__,
         }
 
     @transaction.atomic()

@@ -4,6 +4,7 @@ from pathlib import Path
 import environ
 import sentry_sdk
 import structlog
+from celery.schedules import crontab
 
 env = environ.Env(
     DEBUG=(bool, False),
@@ -14,89 +15,89 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, "core/.env"))  # noqa: PTH118
 
 DEBUG = env.bool("DEBUG", default=False)
-ENVIRONMENT = env('ENVIRONMENT', default='Local')
+ENVIRONMENT = env("ENVIRONMENT", default="Local")
 
 SECRET_KEY = env("SECRET_KEY")
 
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # project apps
-    'users',
+    "users",
+    "outbox",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'core.urls'
+ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'core.wsgi.application'
+WSGI_APPLICATION = "core.wsgi.application"
 
 DATABASES = {
     "default": env.db("DATABASE_URL"),
 }
 
-CLICKHOUSE_HOST = env('CLICKHOUSE_HOST', default='clickhouse')
-CLICKHOUSE_PORT = env('CLICKHOUSE_HOST', default=8123)
-CLICKHOUSE_USER = os.getenv('CLICKHOUSE_USER', default='')
-CLICKHOUSE_PASSWORD = os.getenv('CLICKHOUSE_PASSWORD', default='')
-CLICKHOUSE_SCHEMA = os.getenv('CLICKHOUSE_SCHEMA', default='default')
-CLICKHOUSE_PROTOCOL = os.getenv('CLICKHOUSE_PROTOCOL', default='http')
+CLICKHOUSE_HOST = env("CLICKHOUSE_HOST", default="clickhouse")
+CLICKHOUSE_PORT = env("CLICKHOUSE_HOST", default=8123)
+CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", default="")
+CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", default="")
+CLICKHOUSE_SCHEMA = os.getenv("CLICKHOUSE_SCHEMA", default="default")
+CLICKHOUSE_PROTOCOL = os.getenv("CLICKHOUSE_PROTOCOL", default="http")
 CLICKHOUSE_URI = (
-    f'clickhouse://{CLICKHOUSE_USER}:{CLICKHOUSE_PASSWORD}@{CLICKHOUSE_HOST}:{CLICKHOUSE_PORT}/{CLICKHOUSE_SCHEMA}?protocol='
-    f'{CLICKHOUSE_PROTOCOL}'
+    f"clickhouse://{CLICKHOUSE_USER}:{CLICKHOUSE_PASSWORD}@{CLICKHOUSE_HOST}:{CLICKHOUSE_PORT}/{CLICKHOUSE_SCHEMA}?protocol="
+    f"{CLICKHOUSE_PROTOCOL}"
 )
-CLICKHOUSE_EVENT_LOG_TABLE_NAME = 'event_log'
+CLICKHOUSE_EVENT_LOG_TABLE_NAME = "event_log"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = env("TIME_ZONE", default="Europe/Moscow")
 USE_I18N = True
@@ -108,10 +109,26 @@ MEDIA_ROOT = env("MEDIA_ROOT")
 STATIC_URL = env("STATIC_URL")
 STATIC_ROOT = env("STATIC_ROOT")
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CELERY_BROKER = env("CELERY_BROKER", default="redis://localhost:6379/0")
 CELERY_ALWAYS_EAGER = env("CELERY_ALWAYS_EAGER", default=DEBUG)
+CELERY_RESULT_BACKEND = env("CELERY_BROKER", default="redis://localhost:6379/0")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_OBJECTS_AMOUNT = int(env("CELERY_OBJECTS_AMOUNT", default=100))
+CELERY_OUTBOX_MINUTES = int(env("CELERY_OUTBOX_MINUTES", default=5))
+CELERY_DELETE_MINUTES = int(env("CELERY_DELETE_MINUTES", default=10))
+
+CELERY_BEAT_SCHEDULE = {
+    "send_outbox_task": {
+        "task": "outbox.tasks.process_outbox_events",
+        "schedule": crontab(minute=f"*/{CELERY_OUTBOX_MINUTES}"),
+    },
+    "delete_outbox_task": {
+        "task": "outbox.tasks.cleanup_processed_outbox_events",
+        "schedule": crontab(minute=f"*/{CELERY_DELETE_MINUTES}"),
+    },
+}
 
 LOG_FORMATTER = env("LOG_FORMATTER", default="console")
 LOG_LEVEL = env("LOG_LEVEL", default="INFO")

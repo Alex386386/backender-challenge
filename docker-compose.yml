@@ -1,7 +1,6 @@
-version: '3.8'
-
 services:
   app:
+    container_name: web
     build: .
     restart: always
     depends_on:
@@ -9,13 +8,14 @@ services:
       - clickhouse
     command: [ "../docker/wait-for-it.sh", "db:5432", "--", "python", "manage.py", "runserver", "0.0.0.0:8000" ]
     ports:
-      - 8000:8000
+      - "8000:8000"
     volumes:
       - app_static_files:/srv/app/static:rw
       - app_media_files:/srv/app/media:rw
       - .:/srv/app
 
   db:
+    container_name: db
     tty: true
     image: postgres:16-alpine
     volumes:
@@ -28,24 +28,44 @@ services:
       DATABASE_PASSWORD: 123456
       DATABASE_NAME: test_database
     ports:
-      - 5432:5432
+      - "5432:5432"
 
   redis:
+    container_name: redis
     image: redis:6-alpine
     networks:
       - default
     ports:
-      - 6379:6379
+      - "6379:6379"
+
+  celery:
+    container_name: celery
+    build: .
+    command: celery --app=core.celery_settings worker --loglevel=info --uid=nobody
+    env_file:
+      - src/core/.env
+    depends_on:
+      - redis
+
+  celery-beat:
+    container_name: celery-beat
+    build: .
+    command: celery -A core.celery_settings beat -l info
+    env_file:
+      - src/core/.env
+    depends_on:
+      - redis
 
   clickhouse:
+    container_name: clickhouse
     image: "clickhouse/clickhouse-server:23.8.2.7-alpine"
     ports:
-      - 8123:8123
+      - "8123:8123"
     volumes:
       - ./docker/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 
 volumes:
-  dev-db-data: {}
+  dev-db-data: { }
   app_media_files: { }
   app_static_files: { }

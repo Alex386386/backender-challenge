@@ -1,7 +1,7 @@
 import json
 
 import structlog
-from celery import shared_task
+from celery import Task, shared_task
 from sentry_sdk import capture_exception
 
 from core import settings
@@ -12,10 +12,10 @@ logger = structlog.get_logger(__name__)
 
 
 @shared_task(bind=True)
-def process_outbox_events(self):
+def process_outbox_events(self: Task) -> None:
     """Обрабатывает и отправляет события из Outbox в ClickHouse."""
     events = list(
-        EventOutbox.objects.filter(processed=False)[: settings.CELERY_OBJECTS_AMOUNT]
+        EventOutbox.objects.filter(processed=False)[: settings.CELERY_OBJECTS_AMOUNT],
     )
     if not events:
         return
@@ -43,7 +43,7 @@ def process_outbox_events(self):
 
 
 @shared_task(bind=True)
-def cleanup_processed_outbox_events(self):
+def cleanup_processed_outbox_events(self: Task) -> None:
     """Удаляет обработанные события из Outbox."""
     try:
         deleted_count, _ = EventOutbox.objects.filter(processed=True).delete()

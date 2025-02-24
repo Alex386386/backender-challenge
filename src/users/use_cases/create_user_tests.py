@@ -28,7 +28,7 @@ def test_user_created(f_use_case: CreateUser) -> None:
     assert response.error == ""
 
     event = EventOutbox.objects.filter(
-        event_type="user_created", event_context__contains={"email": "test@email.com"}
+        event_type="user_created", event_context__contains={"email": "test@email.com"},
     ).first()
     assert event is not None
     assert event.event_type == "user_created"
@@ -49,6 +49,6 @@ def test_emails_are_unique(f_use_case: CreateUser) -> None:
     assert response.error == "User with this email already exists"
 
     events = EventOutbox.objects.filter(
-        event_type="user_created", event_context__contains={"email": "test@email.com"}
+        event_type="user_created", event_context__contains={"email": "test@email.com"},
     )
     assert events.count() == 1

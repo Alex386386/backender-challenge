@@ -63,11 +63,12 @@ class EventLogClient:
                     data=self._convert_data(data),
                 )
                 logger.info(
-                    "Events successfully inserted into ClickHouse", count=len(data)
+                    "Events successfully inserted into ClickHouse",
+                    count=len(data),
                 )
 
                 EventOutbox.objects.filter(
-                    id__in=[event["event_id"] for event in data]
+                    id__in=[event["event_id"] for event in data],
                 ).update(processed=True)
                 logger.info("Events processed status change to True:", count=len(data))
         except DatabaseError as e:
@@ -77,14 +78,14 @@ class EventLogClient:
         except Exception as e:
             capture_exception(e)
             logger.error("Transaction failed, rolling back changes", error=str(e))
-            self.delete_inserted_data(data)
+            self.delete_inserted_data()
             raise
 
-    def delete_inserted_data(self, data: list[dict]) -> None:
+    def delete_inserted_data(self) -> None:
         current_time = timezone.now()
         current_time_without_tz = current_time.replace(tzinfo=None)
         time_60_seconds_ago = (current_time - timedelta(seconds=60)).replace(
-            tzinfo=None
+            tzinfo=None,
         )
 
         delete_query = f"""

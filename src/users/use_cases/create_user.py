@@ -52,5 +52,5 @@ class CreateUser(UseCase):
             metadata_version=1,
         )
         logger.info(
-            "Event saved to Outbox", event_type="user_created", user_email=user.email
+            "Event saved to Outbox", event_type="user_created", user_email=user.email,
         )

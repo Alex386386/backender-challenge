@@ -30,31 +30,31 @@ services:
     ports:
       - "5432:5432"
 
-#  redis:
-#    container_name: redis
-#    image: redis:6-alpine
-#    networks:
-#      - default
-#    ports:
-#      - "6379:6379"
-#
-#  celery:
-#    container_name: celery
-#    build: .
-#    command: celery --app=core.celery_settings worker --loglevel=info --uid=nobody
-#    env_file:
-#      - src/core/.env
-#    depends_on:
-#      - redis
-#
-#  celery-beat:
-#    container_name: celery-beat
-#    build: .
-#    command: celery -A core.celery_settings beat -l info
-#    env_file:
-#      - src/core/.env
-#    depends_on:
-#      - redis
+  redis:
+    container_name: redis
+    image: redis:6-alpine
+    networks:
+      - default
+    ports:
+      - "6379:6379"
+
+  celery:
+    container_name: celery
+    build: .
+    command: celery --app=core.celery_settings worker --loglevel=info --uid=nobody
+    env_file:
+      - src/core/.env
+    depends_on:
+      - redis
+
+  celery-beat:
+    container_name: celery-beat
+    build: .
+    command: celery -A core.celery_settings beat -l info
+    env_file:
+      - src/core/.env
+    depends_on:
+      - redis
 
   clickhouse:
     container_name: clickhouse

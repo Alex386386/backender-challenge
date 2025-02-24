@@ -13,9 +13,10 @@ class UseCase(Protocol):
         ):
             return self._execute(request)
 
-    def _get_context_vars(
-        self, request: UseCaseRequest
-    ) -> dict[str, Any]:  # noqa: ARG002
+    def _get_context_vars(  # noqa: ARG002
+        self,
+        request: UseCaseRequest,  # noqa: ARG002
+    ) -> dict[str, Any]:
         """
         !!! WARNING:
             This method is calling out of transaction so do not make db
